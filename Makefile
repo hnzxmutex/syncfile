@@ -6,8 +6,11 @@ PROJECT_NAME := syncfile
 all:
 	@GOPATH=$(GOPATH) && echo "install at $(GOBIN)" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && go install $(PROJECT_NAME)
 
-server:
+linux:
 	@GOPATH=$(GOPATH) && echo "build at $(GOBIN)" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && GOOS=linux GOARCH=amd64 go build  -o ./bin/$(PROJECT_NAME).linux $(PROJECT_NAME)
+
+windows:
+	@GOPATH=$(GOPATH) && echo "build at $(GOBIN)" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && GOOS=windows GOARCH=amd64 go build  -o ./bin/$(PROJECT_NAME).exe $(PROJECT_NAME)
 
 test:
 	@GOPATH=$(GOPATH) && echo "testing" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && go test $(PROJECT_NAME)

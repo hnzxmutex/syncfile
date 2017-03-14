@@ -49,7 +49,7 @@ func (s *Server) Serve() {
 }
 
 func (s *Server) Handler(conn net.Conn) {
-	log.Println("new client")
+	log.Println("new client is connected")
 	defer conn.Close()
 	for {
 		log.Println("===========check a new file===============")
@@ -58,8 +58,8 @@ func (s *Server) Handler(conn net.Conn) {
 			log.Println(err)
 			return
 		}
-		log.Println(fi)
 		fi.name = filepath.Join(s.path, strings.Replace(fi.name, "..", ".", -1))
+		log.Println(fi.name)
 		if fi.isDir {
 			//文件夹
 			log.Println("create dir:", fi.name, fi.perm)
