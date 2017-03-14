@@ -57,6 +57,7 @@ func (c *Client) WatchAndSync() {
 		}
 		return nil
 	})
+	c.conn.Close()
 	return
 }
 
@@ -95,18 +96,13 @@ func (c *Client) checkFile(src string) bool {
 	c.conn.Write(header[:])
 	c.conn.Write(cmdLine)
 
-	c.conn.Read(header[:])
-	result := string(header[:])
-	if result == "gf" {
-		//get file
-		return true
-	} else if result == "if" {
-		//ignore file
-		return false
+	n, err := c.conn.Read(header[:])
+	if err != nil {
+		log.Fatalln(err)
 	} else {
-		log.Fatalln("unknow result", result)
-		return false
+		log.Println("server return:", string(header[:]), ", n:", n)
 	}
+	return header[0] == 'g' && header[1] == 'f'
 }
 
 func (c *Client) Handler() {

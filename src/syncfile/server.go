@@ -73,7 +73,6 @@ func (s *Server) Handler(conn net.Conn) {
 			} else {
 				//是文件,且文件不存在
 				if fi.size != 0 {
-					conn.Write([]byte("gf")) //get file
 					s.saveFile(conn, fileHandle, fi.size)
 					fileHandle.Close()
 					continue
