@@ -12,19 +12,13 @@
 > * 支持mac/win/linux
 
 ## 参数说明
-$ ./bin/syncfile -h
-Usage of ./bin/syncfile:
-  -d	server mode 可选 设置了表示为服务器模式
-  -dir string 必选 同步目录
-    	server or client sync fold (default "./gosync/")
-  -host string 服务器ip,客户端模式需要配置
-    	server host
-  -i string 黑名单列表,格式为正则,参见ignore.ini
-    	ignore file (default "./ignore.ini")
-  -p string 密码,服务端和客户端需一致
-    	password (default "tgideas")
-  -port string 服务器端口
-    	server listen port (default "443")
+
+> *   -d	server mode 可选,设置了表示为服务器模式
+> *   -dir string 必选,同步目录,默认./gosync/
+> *   -host string 服务器ip,客户端模式需要配置
+> *   -i string 黑名单列表,格式为正则,参见ignore.ini,默认为./ignore.ini
+> *   -p string 密码,服务端和客户端需一致，默认为tgideas
+> *   -port string 服务器端口,默认443
 
 
 ## 使用
