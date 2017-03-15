@@ -3,10 +3,11 @@ GOBIN := $(GOPATH)/bin
 PROJECT_NAME := syncfile
 .PHONY: clean
 
-all: mac linux windows
 
 mac:
 	@GOPATH=$(GOPATH) && echo "build at $(GOBIN)" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && go install $(PROJECT_NAME)
+
+all: mac linux windows
 
 linux:
 	@GOPATH=$(GOPATH) && echo "build at $(GOBIN)" && cd src/$(PROJECT_NAME) && go get && cd $(GOPATH) && GOOS=linux GOARCH=amd64 go build  -o ./bin/$(PROJECT_NAME).linux $(PROJECT_NAME)

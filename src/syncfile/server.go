@@ -8,17 +8,19 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
 
 type Server struct {
-	l    net.Listener
-	path string
+	l        net.Listener
+	path     string
+	ignore   []*regexp.Regexp
+	password string
 }
 
-func NewServer(addr, path string) *Server {
-
+func NewServer(addr, path, password string, ignore []*regexp.Regexp) *Server {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalln("net failed", err)
@@ -30,8 +32,10 @@ func NewServer(addr, path string) *Server {
 	log.Println("Start Service")
 	path, _ = filepath.Abs(path)
 	return &Server{
-		l:    l,
-		path: path,
+		l:        l,
+		path:     path,
+		ignore:   ignore,
+		password: password,
 	}
 }
 
@@ -44,29 +48,58 @@ func (s *Server) Serve() {
 			}
 			log.Println("network error:", err)
 		}
-		go s.Handler(conn)
+
+		go s.Handler(NewXSocket(conn, s.password))
 	}
 }
 
-func (s *Server) Handler(conn net.Conn) {
+func (s *Server) isIgnore(relativePath string) bool {
+	for _, reg := range s.ignore {
+		if reg.MatchString(relativePath) {
+			log.Println("[", reg, "]:match,ignore file")
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) Handler(conn *xsocket) {
 	log.Println("new client is connected")
 	defer conn.Close()
 	for {
-		log.Println("===========check a new file===============")
 		fi, err := s.getFileInfo(conn)
-		if err != nil {
+		if err == io.EOF {
+			log.Println("connection close")
+			return
+		} else if err != nil {
 			log.Println(err)
+			log.Println("connection close")
 			return
 		}
-		fi.name = filepath.Join(s.path, strings.Replace(fi.name, "..", ".", -1))
-		log.Println(fi.name)
+		log.Println("===========check a new file===============")
+		//过滤不安全字符
+		fi.name = strings.Replace(fi.name, "..", ".", -1)
+		if s.isIgnore(fi.name) {
+			s.ignoreFile(conn)
+			continue
+		}
+		//绝对路径
+		fi.name = filepath.Join(s.path, fi.name)
+		log.Println("get a file:", fi.name)
 		if fi.isDir {
 			//文件夹
 			log.Println("create dir:", fi.name, fi.perm)
 			if err := os.MkdirAll(fi.name, fi.perm); err != nil {
 				log.Println(err)
 			}
-		} else if _, err := os.Lstat(fi.name); os.IsNotExist(err) {
+			os.Chmod(fi.name, fi.perm)
+			s.ignoreFile(conn)
+			continue
+		}
+
+		//文件不存在
+		if _, err := os.Lstat(fi.name); os.IsNotExist(err) {
+			log.Println(fi.name, "not found, create")
 			fileHandle, err := s.createFile(fi)
 			if err != nil {
 				log.Println(err)
@@ -79,9 +112,12 @@ func (s *Server) Handler(conn net.Conn) {
 				}
 				fileHandle.Close()
 			}
+			s.ignoreFile(conn)
 		} else {
-			log.Println(fi.name, "file exists check md5")
+			//文件存在
+			log.Println(fi.name, "exist, check md5")
 			localfi := getFileInfo(fi.name)
+			//md5不一致,同步
 			if localfi.md5 != fi.md5 {
 				fileHandle, err := os.Create(fi.name)
 				if err != nil {
@@ -94,7 +130,7 @@ func (s *Server) Handler(conn net.Conn) {
 				}
 			}
 		}
-		conn.Write([]byte("if")) //ignore file
+		s.ignoreFile(conn)
 	}
 }
 
@@ -121,6 +157,10 @@ func (s *Server) saveFile(conn net.Conn, fileHandle *os.File, size int64) {
 		log.Println("write success,size:", num)
 	}
 	conn.Write([]byte("ov")) //ov
+}
+
+func (s *Server) ignoreFile(conn net.Conn) {
+	conn.Write([]byte("if")) //ignore file
 }
 
 func (s *Server) getFileInfo(conn net.Conn) (*SysFileInfo, error) {

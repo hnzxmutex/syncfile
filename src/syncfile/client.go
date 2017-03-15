@@ -7,15 +7,17 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 type Client struct {
-	conn net.Conn
-	path string
+	conn   *xsocket
+	path   string
+	ignore []*regexp.Regexp
 }
 
-func NewClient(serverAddr, path string) *Client {
+func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Client {
 	localAddr, err := net.ResolveTCPAddr("tcp", serverAddr)
 	if err != nil {
 		log.Fatalln("addr error", err)
@@ -26,19 +28,26 @@ func NewClient(serverAddr, path string) *Client {
 	}
 	path, _ = filepath.Abs(path)
 	return &Client{
-		conn: conn,
-		path: path,
+		conn:   NewXSocket(conn, password),
+		path:   path,
+		ignore: ignore,
 	}
 }
 
 func (c *Client) WatchAndSync() {
+	c.SyncAll()
+	c.conn.Close()
+	return
+}
+
+func (c *Client) SyncAll() {
 	filepath.Walk(c.path, func(path string, f os.FileInfo, err error) error {
 		if path == c.path {
 			return nil
 		}
 
 		log.Println("walk file:", path)
-		//发送文件
+		//检查文件
 		if c.checkFile(path) {
 			log.Println("ok,send file")
 			c.sendFile(path, f.Size())
@@ -57,8 +66,6 @@ func (c *Client) WatchAndSync() {
 		}
 		return nil
 	})
-	c.conn.Close()
-	return
 }
 
 func (c *Client) sendFile(path string, size int64) {
@@ -70,14 +77,29 @@ func (c *Client) sendFile(path string, size int64) {
 	io.CopyN(c.conn, fileHandle, size)
 }
 
+func (c *Client) isIgnore(relativePath string) bool {
+	for _, reg := range c.ignore {
+		if reg.MatchString(relativePath) {
+			log.Println("[", reg, "]:match,ignore file")
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Client) checkFile(src string) bool {
 	file := getFileInfo(src)
 	relativePath, err := filepath.Rel(c.path, src)
-	//过滤..防止非法输入
 	if err != nil {
 		log.Fatalln(err)
 	}
 	relativePath = strings.TrimLeft(relativePath, ".")
+	log.Println("check:", relativePath)
+	//是否在白名单
+	if c.isIgnore(relativePath) {
+		return false
+	}
+
 	//connect
 	cmdLine := []byte(fmt.Sprintf(
 		"%s %d %d %d %s %t",
@@ -96,15 +118,11 @@ func (c *Client) checkFile(src string) bool {
 	c.conn.Write(header[:])
 	c.conn.Write(cmdLine)
 
-	n, err := c.conn.Read(header[:])
+	_, err = c.conn.Read(header[:])
 	if err != nil {
 		log.Fatalln(err)
-	} else {
-		log.Println("server return:", string(header[:]), ", n:", n)
+		// } else {
+		// 	log.Println("server return:", string(header[:]), ", n:", n)
 	}
 	return header[0] == 'g' && header[1] == 'f'
-}
-
-func (c *Client) Handler() {
-
 }
