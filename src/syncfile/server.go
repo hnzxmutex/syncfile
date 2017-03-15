@@ -92,10 +92,10 @@ func (s *Server) Handler(conn *xsocket) {
 		log.Println("===========check a new file===============")
 		//过滤不安全字符
 		//windows server
-		if PATH_SEPARATOR == "\\" {
-			fi.name = strings.Replace(fi.name, "/", PATH_SEPARATOR, -1)
+		if runtime.GOOS == "windows" {
+			fi.name = strings.Replace(fi.name, "/", "\\", -1)
 		} else {
-			fi.name = strings.Replace(fi.name, "\\", PATH_SEPARATOR, -1)
+			fi.name = strings.Replace(fi.name, "\\", "/", -1)
 		}
 		fi.name = strings.Replace(fi.name, "..", ".", -1)
 		if s.isIgnore(fi.name) {
