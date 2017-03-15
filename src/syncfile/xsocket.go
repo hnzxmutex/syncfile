@@ -50,3 +50,7 @@ func (s *xsocket) Read(data []byte) (n int, err error) {
 
 	return
 }
+
+func (s *xsocket) Close() {
+	s.Conn.Close()
+}

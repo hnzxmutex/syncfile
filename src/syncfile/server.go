@@ -49,14 +49,27 @@ func (s *Server) Serve() {
 			log.Println("network error:", err)
 		}
 
-		go s.Handler(NewXSocket(conn, s.password))
+		xsocket := NewXSocket(conn, s.password)
+		//握手
+		var chat [4]byte
+		xsocket.Read(chat[:])
+		if string(chat[:]) == "ping" {
+			xsocket.Write([]byte("pong"))
+		} else {
+			xsocket.Close()
+			log.Println("xsocket connect fali!")
+			continue
+		}
+		log.Println("xsocket connect success!")
+		//握手完毕
+		go s.Handler(xsocket)
 	}
 }
 
 func (s *Server) isIgnore(relativePath string) bool {
 	for _, reg := range s.ignore {
 		if reg.MatchString(relativePath) {
-			log.Println("[", reg, "]:match,ignore file")
+			log.Printf("[%s] match %s, ignore file", reg.String(), relativePath)
 			return true
 		}
 	}
@@ -78,6 +91,12 @@ func (s *Server) Handler(conn *xsocket) {
 		}
 		log.Println("===========check a new file===============")
 		//过滤不安全字符
+		//windows server
+		if PATH_SEPARATOR == "\\" {
+			fi.name = strings.Replace(fi.name, "/", PATH_SEPARATOR, -1)
+		} else {
+			fi.name = strings.Replace(fi.name, "\\", PATH_SEPARATOR, -1)
+		}
 		fi.name = strings.Replace(fi.name, "..", ".", -1)
 		if s.isIgnore(fi.name) {
 			s.ignoreFile(conn)
@@ -123,11 +142,13 @@ func (s *Server) Handler(conn *xsocket) {
 				if err != nil {
 					log.Println(err)
 				} else {
-					log.Println("file md5 different")
+					log.Println("md5 of files different")
 					s.saveFile(conn, fileHandle, fi.size)
 					fileHandle.Close()
 					continue
 				}
+			} else {
+				log.Println("md5 of files equal")
 			}
 		}
 		s.ignoreFile(conn)
@@ -147,7 +168,7 @@ func (s *Server) createFile(fi *SysFileInfo) (*os.File, error) {
 	return fileHandle, nil
 }
 
-func (s *Server) saveFile(conn net.Conn, fileHandle *os.File, size int64) {
+func (s *Server) saveFile(conn *xsocket, fileHandle *os.File, size int64) {
 	conn.Write([]byte("gf")) //get file
 	log.Println("writing file")
 	num, err := io.CopyN(fileHandle, conn, size)
@@ -159,11 +180,11 @@ func (s *Server) saveFile(conn net.Conn, fileHandle *os.File, size int64) {
 	conn.Write([]byte("ov")) //ov
 }
 
-func (s *Server) ignoreFile(conn net.Conn) {
+func (s *Server) ignoreFile(conn *xsocket) {
 	conn.Write([]byte("if")) //ignore file
 }
 
-func (s *Server) getFileInfo(conn net.Conn) (*SysFileInfo, error) {
+func (s *Server) getFileInfo(conn *xsocket) (*SysFileInfo, error) {
 	//解析头部
 	var header [2]byte
 	_, err := conn.Read(header[:])

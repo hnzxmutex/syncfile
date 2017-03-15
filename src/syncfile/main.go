@@ -31,7 +31,6 @@ func main() {
 		ignoreString = strings.Replace(ignoreString, "\r\n", "\n", -1)
 		ignoreString = strings.Replace(ignoreString, "\r", "\n", -1)
 		ignoreString = strings.Trim(string(ignoreData), "\n")
-		log.Println(ignoreString)
 		ignoreListString = strings.Split(ignoreString, "\n")
 		if len(ignoreListString) == 1 && ignoreListString[0] == "" {
 			ignoreListString = []string{}

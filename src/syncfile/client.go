@@ -27,8 +27,21 @@ func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Clie
 		log.Fatalln("connect error", err)
 	}
 	path, _ = filepath.Abs(path)
+	xsocket := NewXSocket(conn, password)
+	//握手
+	var chat [4]byte
+	xsocket.Write([]byte("ping")) //ping
+	xsocket.Read(chat[:])         //pong
+	if string(chat[:]) != "pong" {
+		log.Fatalln("xsocket connect fail!")
+		xsocket.Close()
+		return nil
+	}
+	log.Println("xsocket connect success!")
+
+	//握手完毕
 	return &Client{
-		conn:   NewXSocket(conn, password),
+		conn:   xsocket,
 		path:   path,
 		ignore: ignore,
 	}
@@ -80,7 +93,7 @@ func (c *Client) sendFile(path string, size int64) {
 func (c *Client) isIgnore(relativePath string) bool {
 	for _, reg := range c.ignore {
 		if reg.MatchString(relativePath) {
-			log.Println("[", reg, "]:match,ignore file")
+			log.Printf("[%s] match %s, ignore file", reg.String(), relativePath)
 			return true
 		}
 	}
