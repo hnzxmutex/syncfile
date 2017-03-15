@@ -1,3 +1,4 @@
 pkg
 *.pid
 *.log
+ignore.ini
