@@ -129,6 +129,7 @@ func (c *Client) sendFile(path string, size int64) {
 		log.Fatalln(err)
 	}
 	log.Println("io.Copy")
+	defer fileHandle.Close()
 	io.CopyN(c.conn, fileHandle, size)
 }
 
@@ -148,7 +149,7 @@ func (c *Client) checkFile(src string) bool {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	relativePath = strings.TrimLeft(relativePath, ".")
+	relativePath = strings.TrimLeft(relativePath, "..")
 	//是否在白名单
 	if c.isIgnore(relativePath) {
 		return false
