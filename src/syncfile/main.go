@@ -13,6 +13,7 @@ var (
 	listenPort = flag.String("port", "443", "server listen port")
 	syncHost   = flag.String("host", "", "server host")
 	syncSer    = flag.Bool("d", false, "server mode")
+	isWatch    = flag.Bool("w", false, "is client watching all file and realtime sync")
 	syncFold   = flag.String("dir", "./gosync/", "server or client sync fold")
 	ignoreFile = flag.String("i", "./ignore.ini", "ignore file")
 	password   = flag.String("p", "tgideas", "password")
@@ -45,7 +46,8 @@ func main() {
 	} else {
 		destination := fmt.Sprintf("%s:%s", *syncHost, *listenPort)
 		c := NewClient(destination, *syncFold, *password, ignoreList)
-		c.WatchAndSync()
+		c.SetWatch(*isWatch)
+		c.Start()
 	}
 }
 

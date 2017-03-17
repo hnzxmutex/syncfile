@@ -9,12 +9,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type Client struct {
-	conn   *xsocket
-	path   string
-	ignore []*regexp.Regexp
+	conn    *xsocket
+	path    string
+	ignore  []*regexp.Regexp
+	isWatch bool
 }
 
 func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Client {
@@ -47,14 +50,51 @@ func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Clie
 	}
 }
 
-func (c *Client) WatchAndSync() {
-	c.SyncAll()
-	c.conn.Close()
-	return
+func (c *Client) SetWatch(isWatch bool) {
+	c.isWatch = isWatch
 }
 
-func (c *Client) SyncAll() {
-	filepath.Walk(c.path, func(path string, f os.FileInfo, err error) error {
+func (c *Client) Start() {
+	c.Sync(c.path)
+	if c.isWatch {
+		c.Watch(c.path)
+	}
+	c.conn.Close()
+}
+
+func (c *Client) Watch(watchPath string) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer watcher.Close()
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				log.Println(event.Name, "change!")
+				if _, err := os.Lstat(event.Name); !os.IsNotExist(err) {
+					log.Println(event.Name, "start sync!")
+					c.Sync(event.Name)
+				}
+			case err := <-watcher.Errors:
+				log.Println("error:", err)
+			}
+		}
+	}()
+
+	filepath.Walk(watchPath, func(path string, f os.FileInfo, err error) error {
+		if f.IsDir() {
+			watcher.Add(path)
+		}
+		return nil
+	})
+	<-done
+}
+
+func (c *Client) Sync(syncPath string) {
+	filepath.Walk(syncPath, func(path string, f os.FileInfo, err error) error {
 		i++
 		if path == c.path {
 			return nil
