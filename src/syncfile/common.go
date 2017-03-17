@@ -10,12 +10,12 @@ import (
 )
 
 type SysFileInfo struct {
-	name  string
-	size  int64
-	time  time.Time
-	perm  os.FileMode
-	md5   string
-	isDir bool
+	Name  string
+	Size  int64
+	Time  time.Time
+	Perm  os.FileMode
+	Md5   string
+	IsDir bool
 }
 
 func getFileInfo(filePath string) *SysFileInfo {
@@ -33,11 +33,11 @@ func getFileInfo(filePath string) *SysFileInfo {
 	_, err = io.Copy(h, fileHandle)
 
 	return &SysFileInfo{
-		name:  fi.Name(),
-		size:  fi.Size(),
-		perm:  fi.Mode().Perm(),
-		time:  fi.ModTime(),
-		md5:   fmt.Sprintf("%x", h.Sum(nil)),
-		isDir: fi.IsDir(),
+		Name:  fi.Name(),
+		Size:  fi.Size(),
+		Perm:  fi.Mode().Perm(),
+		Time:  fi.ModTime(),
+		Md5:   fmt.Sprintf("%x", h.Sum(nil)),
+		IsDir: fi.IsDir(),
 	}
 }

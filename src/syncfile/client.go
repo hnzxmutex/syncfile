@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
 	"log"
 	"net"
@@ -55,20 +55,22 @@ func (c *Client) WatchAndSync() {
 
 func (c *Client) SyncAll() {
 	filepath.Walk(c.path, func(path string, f os.FileInfo, err error) error {
+		i++
 		if path == c.path {
 			return nil
 		}
 
-		log.Println("walk file:", path)
+		log.Println("=========walk file:", path, "================")
 		//检查文件
 		if c.checkFile(path) {
 			log.Println("ok,send file")
 			c.sendFile(path, f.Size())
-			var result [2]byte
+			var result [3]byte
 			_, err := c.conn.Read(result[:])
 			if err != nil && err != io.EOF {
 				log.Fatalln(err)
 			}
+			log.Println("send file over,server say:", string(result[:2]), "service id:", result[2])
 			if result[0] == 'o' && result[1] == 'v' {
 				log.Println("send file success:", path)
 			} else if err == io.EOF {
@@ -107,35 +109,33 @@ func (c *Client) checkFile(src string) bool {
 		log.Fatalln(err)
 	}
 	relativePath = strings.TrimLeft(relativePath, ".")
-	log.Println("check:", relativePath)
 	//是否在白名单
 	if c.isIgnore(relativePath) {
 		return false
 	}
-
-	//connect
-	cmdLine := []byte(fmt.Sprintf(
-		"%s %d %d %d %s %t",
-		relativePath,
-		file.time.Unix(),
-		file.perm,
-		file.size,
-		file.md5,
-		file.isDir,
-	))
+	file.Name = relativePath
+	cmdLine, _ := json.Marshal(file)
 
 	length := len(cmdLine)
-	var header [2]byte
+	var header [3]byte
 	header[0] = byte(length >> 8)
 	header[1] = byte(length & 0xff)
+	header[2] = byte(i % 0xff)
+	log.Println("check:", relativePath, "client id:", header[2])
 	c.conn.Write(header[:])
 	c.conn.Write(cmdLine)
 
 	_, err = c.conn.Read(header[:])
 	if err != nil {
 		log.Fatalln(err)
-		// } else {
-		// 	log.Println("server return:", string(header[:]), ", n:", n)
 	}
-	return header[0] == 'g' && header[1] == 'f'
+	log.Println("server say:", string(header[:2]), "server id:", header[2])
+	if header[0] == 'g' && header[1] == 'f' {
+		return true
+	} else if header[0] == 'i' && header[1] == 'g' {
+		return false
+	} else {
+		log.Fatalln("error result:", string(header[:2]), "server id:", header[2])
+		return false
+	}
 }

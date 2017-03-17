@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
 )
 
 type Server struct {
@@ -20,6 +19,8 @@ type Server struct {
 	ignore   []*regexp.Regexp
 	password string
 }
+
+var i int64 = 0
 
 func NewServer(addr, path, password string, ignore []*regexp.Regexp) *Server {
 	l, err := net.Listen("tcp", addr)
@@ -82,6 +83,7 @@ func (s *Server) Handler(conn *xsocket) {
 	defer conn.Close()
 	for {
 		fi, err := s.getFileInfo(conn)
+		i++
 		if err == io.EOF {
 			log.Println("connection close")
 			return
@@ -94,57 +96,56 @@ func (s *Server) Handler(conn *xsocket) {
 		//过滤不安全字符
 		//windows server
 		if runtime.GOOS == "windows" {
-			fi.name = strings.Replace(fi.name, "/", "\\", -1)
+			fi.Name = strings.Replace(fi.Name, "/", "\\", -1)
 		} else {
-			fi.name = strings.Replace(fi.name, "\\", "/", -1)
+			fi.Name = strings.Replace(fi.Name, "\\", "/", -1)
 		}
-		fi.name = strings.Replace(fi.name, "..", ".", -1)
-		if s.isIgnore(fi.name) {
+		fi.Name = strings.Replace(fi.Name, "..", ".", -1)
+		if s.isIgnore(fi.Name) {
 			s.ignoreFile(conn)
 			continue
 		}
 		//绝对路径
-		fi.name = filepath.Join(s.path, fi.name)
-		log.Println("get a file:", fi.name)
-		if fi.isDir {
+		fi.Name = filepath.Join(s.path, fi.Name)
+		log.Println("get a file:", fi.Name)
+		if fi.IsDir {
 			//文件夹
-			log.Println("create dir:", fi.name, fi.perm)
-			if err := os.MkdirAll(fi.name, fi.perm); err != nil {
+			log.Println("create dir:", fi.Name, fi.Perm)
+			if err := os.MkdirAll(fi.Name, fi.Perm); err != nil {
 				log.Println(err)
 			}
-			os.Chmod(fi.name, fi.perm)
+			os.Chmod(fi.Name, fi.Perm)
 			s.ignoreFile(conn)
 			continue
 		}
 
 		//文件不存在
-		if _, err := os.Lstat(fi.name); os.IsNotExist(err) {
-			log.Println(fi.name, "not found, create")
+		if _, err := os.Lstat(fi.Name); os.IsNotExist(err) {
+			log.Println(fi.Name, "not found, create")
 			fileHandle, err := s.createFile(fi)
 			if err != nil {
 				log.Println(err)
 			} else {
 				//是文件,且文件不存在
-				if fi.size != 0 {
-					s.saveFile(conn, fileHandle, fi.size)
+				if fi.Size != 0 {
+					s.saveFile(conn, fileHandle, fi.Size)
 					fileHandle.Close()
 					continue
 				}
 				fileHandle.Close()
 			}
-			s.ignoreFile(conn)
 		} else {
 			//文件存在
-			log.Println(fi.name, "exist, check md5")
-			localfi := getFileInfo(fi.name)
+			log.Println(fi.Name, "exist, check md5")
+			localfi := getFileInfo(fi.Name)
 			//md5不一致,同步
-			if localfi.md5 != fi.md5 {
-				fileHandle, err := os.Create(fi.name)
+			if localfi.Md5 != fi.Md5 {
+				fileHandle, err := os.Create(fi.Name)
 				if err != nil {
 					log.Println(err)
 				} else {
 					log.Println("md5 of files different")
-					s.saveFile(conn, fileHandle, fi.size)
+					s.saveFile(conn, fileHandle, fi.Size)
 					fileHandle.Close()
 					continue
 				}
@@ -157,12 +158,12 @@ func (s *Server) Handler(conn *xsocket) {
 }
 
 func (s *Server) createFile(fi *SysFileInfo) (*os.File, error) {
-	log.Println("create file:", fi.name)
-	if err := os.MkdirAll(filepath.Dir(fi.name), fi.perm); err != nil {
+	log.Println("create file:", fi.Name)
+	if err := os.MkdirAll(filepath.Dir(fi.Name), fi.Perm); err != nil {
 		return nil, err
 	}
 	//open file
-	fileHandle, err := os.OpenFile(fi.name, os.O_RDWR|os.O_CREATE, fi.perm)
+	fileHandle, err := os.OpenFile(fi.Name, os.O_RDWR|os.O_CREATE, fi.Perm)
 	if err != nil {
 		return nil, err
 	}
@@ -170,29 +171,31 @@ func (s *Server) createFile(fi *SysFileInfo) (*os.File, error) {
 }
 
 func (s *Server) saveFile(conn *xsocket, fileHandle *os.File, size int64) {
-	conn.Write([]byte("gf")) //get file
-	log.Println("writing file")
+	conn.Write([]byte{'g', 'f', byte(i % 0xff)}) //get file
+	log.Println("writing file, server id:", byte(i%0xff))
 	num, err := io.CopyN(fileHandle, conn, size)
 	if err != nil {
-		log.Println("write file err:", err)
+		log.Println("write file err:", err, "server id:", byte(i%0xff))
 	} else {
-		log.Println("write success,size:", num)
+		log.Println("write success,size:", num, "server id:", byte(i%0xff))
 	}
-	conn.Write([]byte("ov")) //ov
+	conn.Write([]byte{'o', 'v', byte(i % 0xff)}) //get file
 }
 
 func (s *Server) ignoreFile(conn *xsocket) {
-	conn.Write([]byte("if")) //ignore file
+	log.Println("ignore ,send ov;server id:", byte(i%0xff))
+	conn.Write([]byte([]byte{'i', 'g', byte(i % 0xff)})) //ignore file
 }
 
 func (s *Server) getFileInfo(conn *xsocket) (*SysFileInfo, error) {
 	//解析头部
-	var header [2]byte
+	var header [3]byte
 	_, err := conn.Read(header[:])
 	if err != nil {
 		return nil, err
 	}
 	length := int(header[0])<<8 | int(header[1])
+	log.Println("header size:", length, "client id:", header[2])
 	if length == 0 || length > 0xfff {
 		log.Println(length)
 		return nil, errors.New("length not valid")
@@ -206,33 +209,11 @@ func (s *Server) getFileInfo(conn *xsocket) (*SysFileInfo, error) {
 }
 
 func (s *Server) parseHeader(str []byte) (*SysFileInfo, error) {
-	var fileName, md5 string
-	var filePerm, fileMtime, fileSize int64
-	var isDir bool
+	var fi SysFileInfo
 
-	n, err := fmt.Sscanf(
-		string(str),
-		"%s %d %d %d %s %t",
-		&fileName,
-		&fileMtime,
-		&filePerm,
-		&fileSize,
-		&md5,
-		&isDir,
-	)
-
-	if n != 6 {
-		return nil, errors.New("invalid header")
-	} else if err != nil {
-		return nil, err
+	if err := json.Unmarshal(str, &fi); err != nil {
+		log.Println("json解析失败", err)
+		return nil, errors.New("微信api json解析失败")
 	}
-
-	return &SysFileInfo{
-		name:  fileName,
-		time:  time.Unix(fileMtime, 0),
-		perm:  os.FileMode(filePerm),
-		size:  fileSize,
-		md5:   md5,
-		isDir: isDir,
-	}, nil
+	return &fi, nil
 }
