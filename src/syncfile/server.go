@@ -18,9 +18,8 @@ type Server struct {
 	path     string
 	ignore   []*regexp.Regexp
 	password string
+	id       int
 }
-
-var i int64 = 0
 
 func NewServer(addr, path, password string, ignore []*regexp.Regexp) *Server {
 	l, err := net.Listen("tcp", addr)
@@ -83,7 +82,7 @@ func (s *Server) Handler(conn *xsocket) {
 	defer conn.Close()
 	for {
 		fi, err := s.getFileInfo(conn)
-		i++
+		s.id++
 		if err == io.EOF {
 			log.Println("connection close")
 			return
@@ -171,20 +170,20 @@ func (s *Server) createFile(fi *SysFileInfo) (*os.File, error) {
 }
 
 func (s *Server) saveFile(conn *xsocket, fileHandle *os.File, size int64) {
-	conn.Write([]byte{'g', 'f', byte(i % 0xff)}) //get file
-	log.Println("writing file, server id:", byte(i%0xff))
+	conn.Write([]byte{'g', 'f', byte(s.id % 0xff)}) //get file
+	log.Println("writing file, server id:", byte(s.id%0xff))
 	num, err := io.CopyN(fileHandle, conn, size)
 	if err != nil {
-		log.Println("write file err:", err, "server id:", byte(i%0xff))
+		log.Println("write file err:", err, "server id:", byte(s.id%0xff))
 	} else {
-		log.Println("write success,size:", num, "server id:", byte(i%0xff))
+		log.Println("write success,size:", num, "server id:", byte(s.id%0xff))
 	}
-	conn.Write([]byte{'o', 'v', byte(i % 0xff)}) //get file
+	conn.Write([]byte{'o', 'v', byte(s.id % 0xff)}) //get file
 }
 
 func (s *Server) ignoreFile(conn *xsocket) {
-	log.Println("ignore ,send ov;server id:", byte(i%0xff))
-	conn.Write([]byte([]byte{'i', 'g', byte(i % 0xff)})) //ignore file
+	log.Println("ignore ,send ov;server id:", byte(s.id%0xff))
+	conn.Write([]byte([]byte{'i', 'g', byte(s.id % 0xff)})) //ignore file
 }
 
 func (s *Server) getFileInfo(conn *xsocket) (*SysFileInfo, error) {

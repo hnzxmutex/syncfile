@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -18,7 +20,13 @@ type Client struct {
 	path    string
 	ignore  []*regexp.Regexp
 	isWatch bool
+	id      int64
+
+	queueMap  map[string]int64
+	queueLock *sync.Mutex
 }
+
+const DelaySync = 1
 
 func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Client {
 	localAddr, err := net.ResolveTCPAddr("tcp", serverAddr)
@@ -44,10 +52,34 @@ func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Clie
 
 	//握手完毕
 	return &Client{
-		conn:   xsocket,
-		path:   path,
-		ignore: ignore,
+		conn:      xsocket,
+		path:      path,
+		ignore:    ignore,
+		queueMap:  make(map[string]int64),
+		queueLock: new(sync.Mutex),
 	}
+}
+
+//给持续监控的时候用的队列
+func (c *Client) pushFile(file string) {
+	c.queueLock.Lock()
+	defer c.queueLock.Unlock()
+	//delay sync
+	c.queueMap[file] = time.Now().Unix() + DelaySync
+}
+
+func (c *Client) popFile() []string {
+	c.queueLock.Lock()
+	defer c.queueLock.Unlock()
+	now := time.Now().Unix()
+	var result []string
+	for k, t := range c.queueMap {
+		if t < now {
+			delete(c.queueMap, k)
+			result = append(result, k)
+		}
+	}
+	return result
 }
 
 func (c *Client) SetWatch(isWatch bool) {
@@ -69,14 +101,15 @@ func (c *Client) Watch(watchPath string) {
 	}
 	defer watcher.Close()
 	done := make(chan bool)
+
 	go func() {
 		for {
 			select {
 			case event := <-watcher.Events:
 				log.Println(event.Name, "change!")
 				if _, err := os.Lstat(event.Name); !os.IsNotExist(err) {
-					log.Println(event.Name, "start sync!")
-					c.Sync(event.Name)
+					log.Println(event.Name, "push into queue!")
+					c.pushFile(event.Name)
 				}
 			case err := <-watcher.Errors:
 				log.Println("error:", err)
@@ -84,18 +117,40 @@ func (c *Client) Watch(watchPath string) {
 		}
 	}()
 
+	//add watcher
 	filepath.Walk(watchPath, func(path string, f os.FileInfo, err error) error {
+		relativePath, err := filepath.Rel(c.path, path)
+		if c.isIgnore(relativePath) {
+			return nil
+		}
 		if f.IsDir() {
 			watcher.Add(path)
 		}
 		return nil
 	})
+	c.processQueue()
 	<-done
+}
+
+func (c *Client) processQueue() {
+	ticker := time.NewTicker(time.Millisecond * DelaySync * 900)
+	go func() {
+		for {
+			<-ticker.C
+			file := c.popFile()
+			if len(file) > 0 {
+				for _, v := range file {
+					log.Println("pop file:", v)
+					c.Sync(v)
+				}
+			}
+		}
+	}()
 }
 
 func (c *Client) Sync(syncPath string) {
 	filepath.Walk(syncPath, func(path string, f os.FileInfo, err error) error {
-		i++
+		c.id++
 		if path == c.path {
 			return nil
 		}
@@ -144,6 +199,10 @@ func (c *Client) isIgnore(relativePath string) bool {
 }
 
 func (c *Client) checkFile(src string) bool {
+	if _, err := os.Lstat(src); os.IsNotExist(err) {
+		log.Println(src, " not exist ignore")
+		return false
+	}
 	file := getFileInfo(src)
 	relativePath, err := filepath.Rel(c.path, src)
 	if err != nil {
@@ -161,7 +220,7 @@ func (c *Client) checkFile(src string) bool {
 	var header [3]byte
 	header[0] = byte(length >> 8)
 	header[1] = byte(length & 0xff)
-	header[2] = byte(i % 0xff)
+	header[2] = byte(c.id % 0xff)
 	log.Println("check:", relativePath, "client id:", header[2])
 	c.conn.Write(header[:])
 	c.conn.Write(cmdLine)
