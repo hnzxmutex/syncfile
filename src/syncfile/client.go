@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -107,6 +106,15 @@ func (c *Client) Watch(watchPath string) {
 			select {
 			case event := <-watcher.Events:
 				log.Println(event.Name, "change!")
+				relativePath, err := filepath.Rel(c.path, event.Name)
+				if err != nil {
+					log.Fatalln(err)
+				}
+
+				if c.isIgnore(relativePath) {
+					continue
+				}
+
 				if _, err := os.Lstat(event.Name); !os.IsNotExist(err) {
 					log.Println(event.Name, "push into queue!")
 					c.pushFile(event.Name)
@@ -155,7 +163,7 @@ func (c *Client) Sync(syncPath string) {
 			return nil
 		}
 
-		log.Println("=========walk file:", path, "================")
+		log.Println("=========walk file:", highlightLog(path, LOG_GREEN), "================")
 		//检查文件
 		if c.checkFile(path) {
 			log.Println("ok,send file")
@@ -165,13 +173,13 @@ func (c *Client) Sync(syncPath string) {
 			if err != nil && err != io.EOF {
 				log.Fatalln(err)
 			}
-			log.Println("send file over,server say:", string(result[:2]), "service id:", result[2])
+			log.Println(highlightLog("send file over,server say:", LOG_YELLO), highlightLog(string(result[:2]), LOG_YELLO), "service id:", result[2])
 			if result[0] == 'o' && result[1] == 'v' {
-				log.Println("send file success:", path)
+				log.Println(highlightLog("send file success:", LOG_BLUE), path)
 			} else if err == io.EOF {
 				log.Fatalln("server close:)")
 			} else {
-				log.Fatalln("unknow result:", string(result[:]))
+				log.Fatalln(highlightLog("unknow result:", LOG_RAD), string(result[:]))
 			}
 		}
 		return nil
@@ -191,7 +199,7 @@ func (c *Client) sendFile(path string, size int64) {
 func (c *Client) isIgnore(relativePath string) bool {
 	for _, reg := range c.ignore {
 		if reg.MatchString(relativePath) {
-			log.Printf("[%s] match %s, ignore file", reg.String(), relativePath)
+			log.Printf("[%s] match %s,"+highlightLog("ignore file", LOG_WHITE), reg.String(), relativePath)
 			return true
 		}
 	}
@@ -208,7 +216,7 @@ func (c *Client) checkFile(src string) bool {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	relativePath = strings.TrimLeft(relativePath, "..")
+	relativePath = trimDoubleDot(relativePath)
 	//是否在白名单
 	if c.isIgnore(relativePath) {
 		return false
@@ -229,7 +237,7 @@ func (c *Client) checkFile(src string) bool {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("server say:", string(header[:2]), "server id:", header[2])
+	log.Println("server say:", highlightLog(string(header[:2]), LOG_GREEN), "server id:", header[2])
 	if header[0] == 'g' && header[1] == 'f' {
 		return true
 	} else if header[0] == 'i' && header[1] == 'g' {

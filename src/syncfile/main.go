@@ -55,7 +55,7 @@ func checkIgnoreList(ignoreList []string) []*regexp.Regexp {
 	regList := make([]*regexp.Regexp, 0, len(ignoreList))
 	for _, p := range ignoreList {
 		p = strings.TrimLeft(p, " ")
-		if ([]rune(p))[0] == '#' {
+		if p == "" || ([]rune(p))[0] == '#' {
 			continue
 		}
 		regList = append(regList, regexp.MustCompile(p))

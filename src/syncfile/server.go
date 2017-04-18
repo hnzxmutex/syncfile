@@ -32,6 +32,16 @@ func NewServer(addr, path, password string, ignore []*regexp.Regexp) *Server {
 	}
 	log.Println("Start Service")
 	path, _ = filepath.Abs(path)
+
+	//为了有权限在端口listen,下面才setuid
+	// if uid == 0 {
+	// 	log.Fatalln("must set uid, run as root is not safe")
+	// }
+	// err = syscall.Setuid(uid)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+
 	return &Server{
 		l:        l,
 		path:     path,
