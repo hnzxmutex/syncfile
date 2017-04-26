@@ -13,12 +13,13 @@
 
 ## 参数说明
 
-> *   -d	server mode 可选,设置了表示为服务器模式
+> *   -d bool server mode 可选,设置了表示为服务器模式
 > *   -dir string 必选,同步目录,默认./gosync/
 > *   -host string 服务器ip,客户端模式需要配置
 > *   -i string 黑名单列表,格式为正则,参见ignore.ini,默认为./ignore.ini
 > *   -p string 密码,服务端和客户端需一致，默认为tgideas
 > *   -port string 服务器端口,默认443
+> *   -w bool 可选，默认false，客户端持续监听目录变化并同步
 
 
 ## 使用
