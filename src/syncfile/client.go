@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"mitchellh/ioprogress"
 )
 
 type Client struct {
@@ -191,9 +192,15 @@ func (c *Client) sendFile(path string, size int64) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("io.Copy")
+	log.Println("io.Copy,size:", size)
 	defer fileHandle.Close()
-	io.CopyN(c.conn, fileHandle, size)
+
+	progressR := &ioprogress.Reader{
+		Reader: fileHandle,
+		Size:   size,
+	}
+
+	io.CopyN(c.conn, progressR, size)
 }
 
 func (c *Client) isIgnore(relativePath string) bool {

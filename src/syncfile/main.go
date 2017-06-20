@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -24,6 +25,7 @@ func main() {
 	//ignore list
 
 	ignoreData, err := ioutil.ReadFile(*ignoreFile)
+	log.SetOutput(os.Stdout)
 	var ignoreListString []string
 	if err != nil {
 		log.Println("Warning:read ignore file error,sync all file")
