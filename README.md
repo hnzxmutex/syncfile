@@ -20,6 +20,7 @@
 > *   -p string 密码,服务端和客户端需一致，默认为tgideas
 > *   -port string 服务器端口,默认443
 > *   -w bool 可选，默认false，客户端持续监听目录变化并同步
+> *   -info bool 可选，默认false，显示debug信息
 
 
 ## 使用
