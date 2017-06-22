@@ -13,7 +13,7 @@
 
 ## 参数说明
 
-> *   -d bool server mode 可选,设置了表示为服务器模式
+> *   -d bool server mode 可选,设置了表示为服务器模式,服务端请选上该选项
 > *   -dir string 必选,同步目录,默认./gosync/
 > *   -host string 服务器ip,客户端模式需要配置
 > *   -i string 黑名单列表,格式为正则,参见ignore.ini,默认为./ignore.ini
