@@ -130,6 +130,9 @@ func (c *Client) Watch(watchPath string) {
 	filepath.Walk(watchPath, func(path string, f os.FileInfo, err error) error {
 		relativePath, err := filepath.Rel(c.path, path)
 		if c.isIgnore(relativePath) {
+			if f.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if f.IsDir() {
@@ -168,7 +171,8 @@ func (c *Client) Sync(syncPath string) {
 			log.Println("=========walk file:", highlightLog(path, LOG_GREEN), "================")
 		}
 		//检查文件
-		if c.checkFile(path) {
+		ok, skip := c.checkFile(path)
+		if ok {
 			log.Println("ok,send file")
 			c.sendFile(path, f.Size())
 			var result [3]byte
@@ -186,6 +190,9 @@ func (c *Client) Sync(syncPath string) {
 			} else {
 				log.Fatalln(highlightLog("unknow result:", LOG_RAD), string(result[:]))
 			}
+		} else if f.IsDir() && (skip != nil) {
+			log.Println("=========skip dir:", highlightLog(path, LOG_BLUE), "================")
+			return skip
 		}
 		return nil
 	})
@@ -219,10 +226,10 @@ func (c *Client) isIgnore(relativePath string) bool {
 	return false
 }
 
-func (c *Client) checkFile(src string) bool {
+func (c *Client) checkFile(src string) (bool, error) {
 	if _, err := os.Lstat(src); os.IsNotExist(err) {
 		log.Println(src, " not exist ignore")
-		return false
+		return false, nil
 	}
 	file := getFileInfo(src)
 	relativePath, err := filepath.Rel(c.path, src)
@@ -232,7 +239,10 @@ func (c *Client) checkFile(src string) bool {
 	relativePath = trimDoubleDot(relativePath)
 	//是否在白名单
 	if c.isIgnore(relativePath) {
-		return false
+		if file.IsDir {
+			return false, filepath.SkipDir
+		}
+		return false, nil
 	}
 	file.Name = relativePath
 	cmdLine, _ := json.Marshal(file)
@@ -254,11 +264,11 @@ func (c *Client) checkFile(src string) bool {
 		log.Println("server say:", highlightLog(string(header[:2]), LOG_GREEN), "server id:", header[2])
 	}
 	if header[0] == 'g' && header[1] == 'f' {
-		return true
+		return true, nil
 	} else if header[0] == 'i' && header[1] == 'g' {
-		return false
+		return false, nil
 	} else {
 		log.Fatalln("error result:", string(header[:2]), "server id:", header[2])
-		return false
+		return false, nil
 	}
 }
