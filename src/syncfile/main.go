@@ -26,6 +26,9 @@ func main() {
 	//ignore list
 
 	ignoreData, err := ioutil.ReadFile(*ignoreFile)
+	if *isPrintDebugMessage {
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+	}
 	log.SetOutput(os.Stdout)
 	var ignoreListString []string
 	if err != nil {

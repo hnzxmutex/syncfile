@@ -170,6 +170,10 @@ func (c *Client) Sync(syncPath string) {
 		if *isPrintDebugMessage {
 			log.Println("=========walk file:", highlightLog(path, LOG_GREEN), "================")
 		}
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 		//检查文件
 		ok, skip := c.checkFile(path)
 		if ok {
@@ -229,7 +233,7 @@ func (c *Client) isIgnore(relativePath string) bool {
 func (c *Client) checkFile(src string) (bool, error) {
 	if _, err := os.Lstat(src); os.IsNotExist(err) {
 		log.Println(src, " not exist ignore")
-		return false, nil
+		return false, err
 	}
 	file := getFileInfo(src)
 	relativePath, err := filepath.Rel(c.path, src)
