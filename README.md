@@ -6,21 +6,41 @@
 ## 功能列表
 
 > * 目录同步
+> * 多目录同步
 > * 简单加密
 > * 密码校验
 > * 黑名单过滤
 > * 支持mac/win/linux
 
-## 参数说明
+## client模式参数说明
 
-> *   -d bool server mode 可选,设置了表示为服务器模式,服务端请选上该选项
+-d bool server mode 可选,设置了表示为服务器模式,服务端请选上该选项
 > *   -dir string 必选,同步目录,默认./gosync/
 > *   -host string 服务器ip,客户端模式需要配置
 > *   -i string 黑名单列表,格式为正则,参见ignore.ini,默认为./ignore.ini
 > *   -p string 密码,服务端和客户端需一致，默认为tgideas
 > *   -port string 服务器端口,默认443
 > *   -w bool 可选，默认false，客户端持续监听目录变化并同步
-> *   -info bool 可选，默认false，显示debug信息
+>example:
+
+
+###Usage:
+  syncfile server [flags] 服务端模式,接受客户端上传的文件
+  syncfile client [flags] 客户端模式,监控本地目录和文件改动并上传
+
+###服务端模式Flags:
+> *  -c, --config string   服务端配置文件
+> *  -h, --help            help for server
+
+###客户端模式Flags:
+> *         --debug             是否打印debug信息
+> *     -d, --dir string        同步目录
+> *     -h, --help              help for client
+> *         --host string       服务器IP
+> *     -i, --ignore string     忽略上传的文件列表,内容为正则 (default "./ignore.ini")
+> *         --password string   同步口令 (default "tgideas")
+> *     -p, --port string       服务器端口 (default "443")
+> *     -w, --watch             是否持续监控文件改动并同步 *   -info bool 可选，默认false，显示debug信息
 
 
 ## 使用
@@ -28,18 +48,36 @@
 已经预编译在bin目录
 可以重新开发编译
 win:make windows
-mac:make
+mac:make mac
 linux:make linux
 
 ## 例子
 
-server:
+###server:
 ```
-./bin/syncfile -d -dir /tmp/server -port 4433
+./bin/syncfile -c ./server.yaml
 ```
 
 
-client:
+###client:
 ```
-./bin/syncfile -host 127.0.0.1 -port 4433 -dir /tmp/client -i /tmp/ignore.ini
+./bin/syncfile client --host 127.0.0.1 -d ./sync_dir -i ./syncignore.ini -w -p 8081 --password app_foo_password
+```
+
+###服务端配置
+```yaml
+port: 8081 #listen端口
+
+app_list: #有效的配置项,必填
+    - app_foo
+    - app_bar #跟下面的名字匹配
+
+app_foo: #配置项1
+    password: app_foo_password
+    path: /tmp/b/
+    #ignore_config_file: /tmp/ignore.ini
+
+app_bar: #配置项2
+    password: xcnsdi!3431
+    path: /tmp/a/
 ```
