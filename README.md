@@ -14,7 +14,6 @@
 
 ## client模式参数说明
 
--d bool server mode 可选,设置了表示为服务器模式,服务端请选上该选项
 > *   -dir string 必选,同步目录,默认./gosync/
 > *   -host string 服务器ip,客户端模式需要配置
 > *   -i string 黑名单列表,格式为正则,参见ignore.ini,默认为./ignore.ini
@@ -22,17 +21,17 @@
 > *   -port string 服务器端口,默认443
 > *   -w bool 可选，默认false，客户端持续监听目录变化并同步
 
-###Usage:
+### Usage:
 
   syncfile server [flags] 服务端模式,接受客户端上传的文件
   syncfile client [flags] 客户端模式,监控本地目录和文件改动并上传
 
-###服务端模式Flags:
+### 服务端模式Flags:
 
 > *  -c, --config string   服务端配置文件
 > *  -h, --help            help for server
 
-###客户端模式Flags:
+### 客户端模式Flags:
 
 > *         --debug             是否打印debug信息
 > *     -d, --dir string        同步目录
@@ -54,20 +53,20 @@ linux:make linux
 
 ## 例子
 
-###server:
+### server:
 
 ```
 ./bin/syncfile -c ./server.yaml
 ```
 
 
-###client:
+### client:
 
 ```
 ./bin/syncfile client --host 127.0.0.1 -d ./sync_dir -i ./syncignore.ini -w -p 8081 --password app_foo_password
 ```
 
-###服务端配置,yaml格式
+### 服务端配置,yaml格式
 
 ```yaml
 port: 8081 #listen端口
