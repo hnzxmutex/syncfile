@@ -56,7 +56,7 @@ linux:make linux
 ### server:
 
 ```
-./bin/syncfile -c ./server.yaml
+./bin/syncfile server -c ./server.yaml
 ```
 
 
