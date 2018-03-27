@@ -21,18 +21,19 @@
 > *   -p string 密码,服务端和客户端需一致，默认为tgideas
 > *   -port string 服务器端口,默认443
 > *   -w bool 可选，默认false，客户端持续监听目录变化并同步
->example:
-
 
 ###Usage:
+
   syncfile server [flags] 服务端模式,接受客户端上传的文件
   syncfile client [flags] 客户端模式,监控本地目录和文件改动并上传
 
 ###服务端模式Flags:
+
 > *  -c, --config string   服务端配置文件
 > *  -h, --help            help for server
 
 ###客户端模式Flags:
+
 > *         --debug             是否打印debug信息
 > *     -d, --dir string        同步目录
 > *     -h, --help              help for client
@@ -54,17 +55,20 @@ linux:make linux
 ## 例子
 
 ###server:
+
 ```
 ./bin/syncfile -c ./server.yaml
 ```
 
 
 ###client:
+
 ```
 ./bin/syncfile client --host 127.0.0.1 -d ./sync_dir -i ./syncignore.ini -w -p 8081 --password app_foo_password
 ```
 
-###服务端配置
+###服务端配置,yaml格式
+
 ```yaml
 port: 8081 #listen端口
 
