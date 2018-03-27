@@ -1,0 +1,14 @@
+port: 8081 #listen端口
+
+app_list: #有效的配置项
+    - app_foo
+    - app_bar #跟下面的名字匹配
+
+app_foo: #配置项1
+    password: app_foo_password
+    path: /tmp/b/
+    #ignore_config_file: /tmp/ignore.ini
+
+app_bar: #配置项2
+    password: xcnsdi!3431
+    path: /tmp/a/
