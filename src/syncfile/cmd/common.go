@@ -23,6 +23,15 @@ const (
 	LOG_WHITE    = "37"
 )
 
+type CommandType byte
+
+const (
+	_                   CommandType = iota
+	COMMAND_GET_FILE                //请客户端发送文件
+	COMMAND_SEND_OVER               //发送完毕
+	COMMAND_IGNORE_FILE             //忽略文件不要发送
+)
+
 const (
 	PING = "123%^2sync_ping"
 	PONG = "345$#1sync_pong"

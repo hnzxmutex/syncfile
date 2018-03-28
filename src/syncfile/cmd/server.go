@@ -64,6 +64,10 @@ func serverRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	viper.SetConfigType("yaml")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalln("读取配置文件失败:", err)
+	}
 	port := viper.GetString("port")
 	syncObjList := loadYamlConfig()
 	s := NewServer(port, syncObjList)
@@ -71,16 +75,16 @@ func serverRun(cmd *cobra.Command, args []string) {
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		s.lock.Lock()
 		defer s.lock.Unlock()
+		err := viper.ReadInConfig()
+		if err != nil {
+			log.Fatalln("读取配置文件失败:", err)
+		}
 		s.syncObjList = loadYamlConfig()
 	})
 	s.Serve()
 }
 
 func loadYamlConfig() []SyncFold {
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatalln("读取配置文件失败:", err)
-	}
 	var syncObjList []SyncFold
 
 	for _, key := range viper.GetStringSlice("app_list") {
@@ -93,7 +97,7 @@ func loadYamlConfig() []SyncFold {
 				log.Println("path must absolute:", syncPath)
 				continue
 			}
-			err = os.MkdirAll(syncPath, 0755)
+			err := os.MkdirAll(syncPath, 0755)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -116,6 +120,7 @@ func loadYamlConfig() []SyncFold {
 
 func NewServer(port string, syncObjList []SyncFold) *Server {
 	addr := fmt.Sprintf(":%s", port)
+	log.Println("listening ", addr)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalln("net failed", err)
@@ -256,7 +261,7 @@ func (s *Server) Handler(conn *xsocket, syncObj SyncFold) {
 					continue
 				}
 			} else {
-				log.Println("md5 of files equal")
+				log.Println("md5sum equal")
 			}
 		}
 		s.ignoreFile(conn)
@@ -277,7 +282,7 @@ func (s *Server) createFile(fi *SysFileInfo) (*os.File, error) {
 }
 
 func (s *Server) saveFile(conn *xsocket, fileHandle *os.File, size int64) {
-	conn.Write([]byte{'g', 'f', byte(s.id % 0xff)}) //get file
+	conn.Write([]byte{byte(COMMAND_GET_FILE), byte(s.id % 0xff)}) //get file
 	log.Println("writing file, server id:", byte(s.id%0xff))
 	num, err := io.CopyN(fileHandle, conn, size)
 	if err != nil {
@@ -285,12 +290,12 @@ func (s *Server) saveFile(conn *xsocket, fileHandle *os.File, size int64) {
 	} else {
 		log.Println("write success,size:", num, "server id:", byte(s.id%0xff))
 	}
-	conn.Write([]byte{'o', 'v', byte(s.id % 0xff)}) //get file
+	conn.Write([]byte{byte(COMMAND_SEND_OVER), byte(s.id % 0xff)}) //get file
 }
 
 func (s *Server) ignoreFile(conn *xsocket) {
 	log.Println("ignore ,send ov;server id:", byte(s.id%0xff))
-	conn.Write([]byte([]byte{'i', 'g', byte(s.id % 0xff)})) //ignore file
+	conn.Write([]byte{byte(COMMAND_IGNORE_FILE), byte(s.id % 0xff)}) //ignore file
 }
 
 func (s *Server) getFileInfo(conn *xsocket) (*SysFileInfo, error) {

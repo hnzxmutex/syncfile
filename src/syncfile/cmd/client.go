@@ -223,15 +223,15 @@ func (c *Client) Sync(syncPath string) {
 		if ok {
 			log.Println("ok,send file")
 			c.sendFile(path, f.Size())
-			var result [3]byte
+			var result [2]byte
 			_, err := c.conn.Read(result[:])
 			if err != nil && err != io.EOF {
 				log.Fatalln(err)
 			}
 			if isPrintDebugMessage {
-				log.Println(highlightLog("send file over,server say:", LOG_YELLO), highlightLog(string(result[:2]), LOG_YELLO), "service id:", result[2])
+				log.Println(highlightLog("send file over,server say:", LOG_YELLO), highlightLog(string(result[:1]), LOG_YELLO), "service id:", result[1])
 			}
-			if result[0] == 'o' && result[1] == 'v' {
+			if CommandType(result[0]) == COMMAND_SEND_OVER {
 				log.Println(highlightLog("send file success:", LOG_BLUE), path)
 			} else if err == io.EOF {
 				log.Fatalln("server close:)")
@@ -304,19 +304,20 @@ func (c *Client) checkFile(src string) (bool, error) {
 	c.conn.Write(header[:])
 	c.conn.Write(cmdLine)
 
-	_, err = c.conn.Read(header[:])
+	_, err = c.conn.Read(header[:2])
 	if err != nil {
 		log.Fatalln(err)
 	}
 	if isPrintDebugMessage {
-		log.Println("server say:", highlightLog(string(header[:2]), LOG_GREEN), "server id:", header[2])
+		log.Println("server say:", highlightLog(string(header[:1]), LOG_GREEN), "server id:", header[1])
 	}
-	if header[0] == 'g' && header[1] == 'f' {
+	switch CommandType(header[0]) {
+	case COMMAND_GET_FILE:
 		return true, nil
-	} else if header[0] == 'i' && header[1] == 'g' {
+	case COMMAND_IGNORE_FILE:
 		return false, nil
-	} else {
-		log.Fatalln("error result:", string(header[:2]), "server id:", header[2])
+	default:
+		log.Fatalln("error result:", string(header[:1]), "server id:", header[1])
 		return false, nil
 	}
 }
