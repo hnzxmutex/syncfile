@@ -14,7 +14,7 @@ import (
 
 const (
 	LOG_BLACK    = "30"
-	LOG_RAD      = "31"
+	LOG_RED      = "31"
 	LOG_GREEN    = "32"
 	LOG_YELLO    = "33"
 	LOG_BLUE     = "34"
@@ -96,10 +96,7 @@ func getIgnoreList(path string) []*regexp.Regexp {
 		log.Println("Warning:read ignore file error,sync all file")
 		return []*regexp.Regexp{}
 	} else {
-		ignoreString := strings.TrimLeft(string(ignoreData), " ")
-		ignoreString = strings.Replace(ignoreString, "\r\n", "\n", -1)
-		ignoreString = strings.Replace(ignoreString, "\r", "\n", -1)
-		ignoreString = strings.Trim(string(ignoreData), "\n")
+		ignoreString := strings.TrimSpace(string(ignoreData))
 		ignoreListString = strings.Split(ignoreString, "\n")
 		if len(ignoreListString) == 1 && ignoreListString[0] == "" {
 			ignoreListString = []string{}
@@ -108,7 +105,7 @@ func getIgnoreList(path string) []*regexp.Regexp {
 
 	regList := make([]*regexp.Regexp, 0, len(ignoreListString))
 	for _, p := range ignoreListString {
-		p = strings.TrimLeft(p, " ")
+		p = strings.TrimSpace(p)
 		if p == "" || ([]rune(p))[0] == '#' {
 			continue
 		}

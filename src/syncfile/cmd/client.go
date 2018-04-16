@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/mitchellh/ioprogress"
 	"github.com/spf13/cobra"
-	"mitchellh/ioprogress"
 )
 
 var (
@@ -236,7 +236,7 @@ func (c *Client) Sync(syncPath string) {
 			} else if err == io.EOF {
 				log.Fatalln("server close:)")
 			} else {
-				log.Fatalln(highlightLog("unknow result:", LOG_RAD), string(result[:]))
+				log.Fatalln(highlightLog("unknow result:", LOG_RED), string(result[:]))
 			}
 		} else if f.IsDir() && (skip != nil) {
 			log.Println("=========skip dir:", highlightLog(path, LOG_BLUE), "================")
@@ -265,7 +265,7 @@ func (c *Client) sendFile(path string, size int64) {
 func (c *Client) isIgnore(relativePath string) bool {
 	for _, reg := range c.ignore {
 		if isPrintDebugMessage {
-			log.Printf("check ignore:[%s]=> %s,"+highlightLog("check ignore", LOG_RAD), reg.String(), relativePath)
+			log.Printf("check ignore:[%s]=> %s \n"+highlightLog("check ignore", LOG_RED), reg.String(), relativePath)
 		}
 		if reg.MatchString(relativePath) {
 			if isPrintDebugMessage {
