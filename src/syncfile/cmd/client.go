@@ -264,6 +264,9 @@ func (c *Client) sendFile(path string, size int64) {
 
 func (c *Client) isIgnore(relativePath string) bool {
 	for _, reg := range c.ignore {
+		if isPrintDebugMessage {
+			log.Printf("check ignore:[%s]=> %s,"+highlightLog("check ignore", LOG_RAD), reg.String(), relativePath)
+		}
 		if reg.MatchString(relativePath) {
 			if isPrintDebugMessage {
 				log.Printf("[%s] match %s,"+highlightLog("ignore file", LOG_WHITE), reg.String(), relativePath)
