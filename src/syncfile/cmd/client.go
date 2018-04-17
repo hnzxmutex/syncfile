@@ -82,6 +82,10 @@ func NewClient(serverAddr, path, password string, ignore []*regexp.Regexp) *Clie
 		log.Fatalln("connect error", err)
 	}
 	path, _ = filepath.Abs(path)
+
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		log.Fatalf("sync directory:[%s] not exist!\n", highlightLog(path, LOG_RED))
+	}
 	xsocket := NewXSocket(conn, password)
 	//握手
 	var chat [len(PONG)]byte
@@ -172,6 +176,10 @@ func (c *Client) Watch(watchPath string) {
 
 	//add watcher
 	filepath.Walk(watchPath, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			log.Println(err.Error())
+			return nil
+		}
 		relativePath, err := filepath.Rel(c.path, path)
 		if c.isIgnore(relativePath) {
 			if f.IsDir() {
